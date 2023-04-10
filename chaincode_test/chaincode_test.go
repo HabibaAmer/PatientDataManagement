@@ -49,15 +49,15 @@ func TestCreatePatient(t *testing.T) {
 	transactionContext.GetStubReturns(chaincodeStub)
 
 	assetTransfer := chaincode.SmartContract{}
-	err := assetTransfer.CreatePatient(transactionContext, "", "", 0, "", 0)
+	err := assetTransfer.CreatePatient(transactionContext, "", "", 0, "", "", "", "", "")
 	require.NoError(t, err)
 
 	chaincodeStub.GetStateReturns([]byte{}, nil)
-	err = assetTransfer.CreatePatient(transactionContext, "Patient1", "", 0, "", 0)
+	err = assetTransfer.CreatePatient(transactionContext, "Patient1", "", 0, "", "", "", "", "")
 	require.EqualError(t, err, "the patient Patient1 already exists")
 
 	chaincodeStub.GetStateReturns(nil, fmt.Errorf("unable to retrieve Patient"))
-	err = assetTransfer.CreatePatient(transactionContext, "patient1", "", 0, "", 0)
+	err = assetTransfer.CreatePatient(transactionContext, "patient1", "", 0, "", "", "", "", "")
 	require.EqualError(t, err, "failed to read from world state: unable to retrieve Patient")
 }
 

@@ -34,23 +34,25 @@ type MedicalRecord struct {
 	MedicationsHistory []string `json:"medicationhistory"`
 }
 
+/*
 // Define the access control struct
 type AccessControl struct {
-	patientID  string
 	providerID string
 	authorized bool
-}
+	Access map[string]bool
+
+} */
 
 // InitLedger adds a base set of Patients to the ledger --> The init function is called when the smart contract is first deployed to the network
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
 
 	Patients := []PatientData{
-		{ID: "Patient1", Name: "test1", Age: 5, Gender: "male", BloodType: "B+", Allergies: "xx", Record: MedicalRecord{"Diagnose1", "Medications1", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}},
-		{ID: "Patient2", Name: "test2", Age: 5, Gender: "male", BloodType: "A+", Allergies: "yy", Record: MedicalRecord{"Diagnose2", "Medications2", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}},
-		{ID: "Patient3", Name: "test3", Age: 10, Gender: "female", BloodType: "AB", Allergies: "cc", Record: MedicalRecord{"Diagnose3", "Medications3", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}},
-		{ID: "Patient4", Name: "test4", Age: 10, Gender: "female", BloodType: "O+", Allergies: "nn", Record: MedicalRecord{"Diagnose4", "Medications4", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}},
-		{ID: "Patient5", Name: "test5", Age: 15, Gender: "female", BloodType: "O-", Allergies: "mm", Record: MedicalRecord{"Diagnose5", "Medications5", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}},
-		{ID: "Patient6", Name: "test6", Age: 15, Gender: "female", BloodType: "B-", Allergies: "jj", Record: MedicalRecord{"Diagnose6", "Medications6", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}},
+		{ID: "Patient1", Name: "test1", Age: 5, Gender: "male", BloodType: "B+", Allergies: "xx", Record: MedicalRecord{"Diagnose1", "Medications1", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}, Access: map[string]bool{"Doctor1": true}},
+		{ID: "Patient2", Name: "test2", Age: 5, Gender: "male", BloodType: "A+", Allergies: "yy", Record: MedicalRecord{"Diagnose2", "Medications2", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}, Access: map[string]bool{"Doctor2": true}},
+		{ID: "Patient3", Name: "test3", Age: 10, Gender: "female", BloodType: "AB", Allergies: "cc", Record: MedicalRecord{"Diagnose3", "Medications3", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}, Access: map[string]bool{"Doctor1": true}},
+		{ID: "Patient4", Name: "test4", Age: 10, Gender: "female", BloodType: "O+", Allergies: "nn", Record: MedicalRecord{"Diagnose4", "Medications4", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}, Access: map[string]bool{"Doctor2": true}},
+		{ID: "Patient5", Name: "test5", Age: 15, Gender: "female", BloodType: "O-", Allergies: "mm", Record: MedicalRecord{"Diagnose5", "Medications5", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}, Access: map[string]bool{"Doctor1": true}},
+		{ID: "Patient6", Name: "test6", Age: 15, Gender: "female", BloodType: "B-", Allergies: "jj", Record: MedicalRecord{"Diagnose6", "Medications6", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}, Access: map[string]bool{"Doctor2": true}},
 	}
 
 	for _, Patient := range Patients {
@@ -69,17 +71,17 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	return nil
 }
 
-func (s *SmartContract) CreatePatient(ctx contractapi.TransactionContextInterface, id string, name string, age int, gender string, bloodType string, allergies string, diagnose string, medication string) error {
-	exists, err := s.PatientExists(ctx, id)
+func (s *SmartContract) CreatePatient(ctx contractapi.TransactionContextInterface, patientID string, name string, age int, gender string, bloodType string, allergies string, diagnose string, medication string) error {
+	exists, err := s.PatientExists(ctx, patientID)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return fmt.Errorf("the Patient %s already exists", id)
+		return fmt.Errorf("the Patient %s already exists", patientID)
 	}
 
 	NewPatient := PatientData{
-		ID:        id,
+		ID:        patientID,
 		Name:      name,
 		Age:       age,
 		Gender:    gender,
@@ -92,7 +94,7 @@ func (s *SmartContract) CreatePatient(ctx contractapi.TransactionContextInterfac
 		return err
 	}
 
-	return ctx.GetStub().PutState(id, PatientJSON)
+	return ctx.GetStub().PutState(patientID, PatientJSON)
 }
 
 func (s *SmartContract) PatientExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
@@ -104,14 +106,20 @@ func (s *SmartContract) PatientExists(ctx contractapi.TransactionContextInterfac
 	return PatientJSON != nil, nil
 }
 
-func (s *SmartContract) UpdateMedicalpatientrecords(ctx contractapi.TransactionContextInterface, ID string, diagnose string, medication string) error {
+func (s *SmartContract) UpdateMedicalpatientrecords(ctx contractapi.TransactionContextInterface, providerID string, patientID string, diagnose string, medication string) error {
 
-	patientRecord, err := ctx.GetStub().GetState(ID) // get state of ID from the ledger and store it in PatientRecords , if an error occur store it in err
+	access, err := s.hasPermission(ctx, providerID, patientID)
+
+	if access == false && err != nil {
+		return fmt.Errorf("Provider does not have permission to share data for patient %s", patientID)
+	}
+
+	patientRecord, err := ctx.GetStub().GetState(patientID) // get state of ID from the ledger and store it in PatientRecords , if an error occur store it in err
 	if err != nil {
 		return fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if patientRecord == nil {
-		return fmt.Errorf("the patient with ID %s does not exist", ID)
+		return fmt.Errorf("the patient with ID %s does not exist", patientID)
 	}
 
 	var patientData PatientData //declare updated data as a variable
@@ -133,7 +141,7 @@ func (s *SmartContract) UpdateMedicalpatientrecords(ctx contractapi.TransactionC
 		return fmt.Errorf("failed to marshal updated patient record: %v", err)
 	}
 
-	err = ctx.GetStub().PutState(ID, updatedpatientData)
+	err = ctx.GetStub().PutState(patientID, updatedpatientData)
 	if err != nil {
 		return fmt.Errorf("failed to update patient record: %v", err)
 	}
@@ -143,13 +151,19 @@ func (s *SmartContract) UpdateMedicalpatientrecords(ctx contractapi.TransactionC
 }
 
 // ReadPatient returns the Medical info only stored in the world state with given id.
-func (s *SmartContract) ReadPatientMedicalInfo(ctx contractapi.TransactionContextInterface, id string) (*MedicalRecord, error) {
-	PatientRecordJSON, err := ctx.GetStub().GetState(id)
+func (s *SmartContract) ReadPatientMedicalInfo(ctx contractapi.TransactionContextInterface, providerID string, patientID string) (*MedicalRecord, error) {
+
+	access, err := s.hasPermission(ctx, providerID, patientID)
+
+	if access == false && err != nil {
+		return nil, fmt.Errorf("Provider does not have permission to share data for patient %s", patientID)
+	}
+	PatientRecordJSON, err := ctx.GetStub().GetState(patientID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if PatientRecordJSON == nil {
-		return nil, fmt.Errorf("the patient %s does not exist", id)
+		return nil, fmt.Errorf("the patient %s does not exist", patientID)
 	}
 
 	var Patient MedicalRecord
@@ -162,13 +176,20 @@ func (s *SmartContract) ReadPatientMedicalInfo(ctx contractapi.TransactionContex
 }
 
 // ReadPatient returns the all patient info stored in the world state with given id.
-func (s *SmartContract) ReadPatientAllInfo(ctx contractapi.TransactionContextInterface, id string) (*PatientData, error) {
-	PatientJSON, err := ctx.GetStub().GetState(id)
+func (s *SmartContract) ReadPatientAllInfo(ctx contractapi.TransactionContextInterface, providerID string, patientID string) (*PatientData, error) {
+
+	access, err := s.hasPermission(ctx, providerID, patientID)
+
+	if access == false && err != nil {
+		return nil, fmt.Errorf("Provider does not have permission to share data for patient %s", patientID)
+	}
+
+	PatientJSON, err := ctx.GetStub().GetState(patientID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if PatientJSON == nil {
-		return nil, fmt.Errorf("the patient %s does not exist", id)
+		return nil, fmt.Errorf("the patient %s does not exist", patientID)
 	}
 
 	var Patient PatientData
@@ -205,51 +226,86 @@ func (p *SmartContract) GrantAccess(ctx contractapi.TransactionContextInterface,
 		return fmt.Errorf("caller is not authorized to grant access for this patient")
 	}
 
-	// Check if the provider exists
-	providerExists, err := p.ProviderExists(ctx, providerID)
+	// Retrieve patient data from the ledger
+	patientDataJSON, err := ctx.GetStub().GetState(patientID)
 	if err != nil {
-		return fmt.Errorf("failed to check if provider exists: %v", err)
+		return fmt.Errorf("failed to read patient data from world state: %v", err)
+
 	}
-	if !providerExists {
-		return fmt.Errorf("provider does not exist")
+	if patientDataJSON == nil {
+		return fmt.Errorf("patient data with ID %s does not exist", patientID)
 	}
 
-	// Check if the access control record exists
-	accessControlKey, err := ctx.GetStub().CreateCompositeKey("accessControl", []string{patientID, providerID})
+	// Unmarshal patient data JSON into struct
+	var patientData PatientData
+	err = json.Unmarshal(patientDataJSON, &patientData)
 	if err != nil {
-		return fmt.Errorf("failed to create composite key: %v", err)
-	}
-	accessControlBytes, err := ctx.GetStub().GetState(accessControlKey) //get the acl from ledger and stor it into accesscontrolbytes
-	if err != nil {
-		return fmt.Errorf("failed to read access control record: %v", err)
+		return fmt.Errorf("failed to unmarshal patient data JSON: %v", err)
 	}
 
-	// If the access control record does not exist, create a new one
-	var accessControl AccessControl
-	if accessControlBytes == nil {
-		accessControl = AccessControl{patientID, providerID, true}
-	} else {
-		// If the access control record exists, update it
-		err = json.Unmarshal(accessControlBytes, &accessControl)
+	access, ok := patientData.Access[providerID]
+	if access == false || ok == false {
+		patientData.Access = map[string]bool{providerID: true}
+	}
+
+	updatedpatientData, err := json.Marshal(patientData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated patient record: %v", err)
+	}
+
+	err = ctx.GetStub().PutState(patientID, updatedpatientData)
+	if err != nil {
+		return fmt.Errorf("failed to update patient record: %v", err)
+	}
+
+	/*
+		// Check if the provider exists
+		providerExists, err := p.ProviderExists(ctx, providerID)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal access control record: %v", err)
+			return fmt.Errorf("failed to check if provider exists: %v", err)
 		}
-		accessControl.authorized = true
-	}
+		if !providerExists {
+			return fmt.Errorf("provider does not exist")
+		}*/
 
-	// Write the updated access control record to the ledger
-	accessControlBytes, err = json.Marshal(accessControl)
-	if err != nil {
-		return fmt.Errorf("failed to marshal access control record: %v", err)
-	}
-	err = ctx.GetStub().PutState(accessControlKey, accessControlBytes)
-	if err != nil {
-		return fmt.Errorf("failed to write access control record: %v", err)
-	}
+	/*
+		// Check if the access control record exists
+		accessControlKey, err := ctx.GetStub().CreateCompositeKey("accessControl", []string{patientID, providerID})
+		if err != nil {
+			return fmt.Errorf("failed to create composite key: %v", err)
+		}
+		accessControlBytes, err := ctx.GetStub().GetState(accessControlKey) //get the acl from ledger and stor it into accesscontrolbytes
+		if err != nil {
+			return fmt.Errorf("failed to read access control record: %v", err)
+		}
+
+		// If the access control record does not exist, create a new one
+		var accessControl AccessControl
+		if accessControlBytes == nil {
+			accessControl = AccessControl{providerID, true}
+		} else {
+			// If the access control record exists, update it
+			err = json.Unmarshal(accessControlBytes, &accessControl)
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal access control record: %v", err)
+			}
+			accessControl.authorized = true
+		}
+
+		// Write the updated access control record to the ledger
+		accessControlBytes, err = json.Marshal(accessControl)
+		if err != nil {
+			return fmt.Errorf("failed to marshal access control record: %v", err)
+		}
+		err = ctx.GetStub().PutState(accessControlKey, accessControlBytes)
+		if err != nil {
+			return fmt.Errorf("failed to write access control record: %v", err)
+		}*/
 
 	return nil
 }
 
+/*
 // define provider exists function
 //to check whether the provider ID exists on the ledger or not
 
@@ -265,10 +321,19 @@ func (p *SmartContract) ProviderExists(ctx contractapi.TransactionContextInterfa
 		return false, fmt.Errorf("failed to read provider record: %v", err)
 	}
 	return providerBytes != nil, nil
-}
+}*/
 
 // define Revoke Access function
 func (s *SmartContract) RevokeAccess(ctx contractapi.TransactionContextInterface, patientID string, DoctorID string) error {
+	// Check if the caller is authorized to revok access
+	creator, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return fmt.Errorf("failed to get client identity: %v", err)
+	}
+	if creator != patientID {
+		return fmt.Errorf("caller is not authorized to grant access for this patient")
+	}
+
 	// Retrieve patient data from the ledger
 	patientDataJSON, err := ctx.GetStub().GetState(patientID)
 	if err != nil {
@@ -285,13 +350,14 @@ func (s *SmartContract) RevokeAccess(ctx contractapi.TransactionContextInterface
 		return fmt.Errorf("failed to unmarshal patient data JSON: %v", err)
 	}
 
-	// Check if hospital has access to patient data
+	// Check if doctor has access to patient data
 	if _, ok := patientData.Access[DoctorID]; !ok {
 		return fmt.Errorf("Doctor with ID %s does not have access to patient data with ID %s", DoctorID, patientID)
 	}
 
 	// Revoke access for specific hospital
-	patientData.Access[DoctorID] = false
+	//patientData.Access[DoctorID] = false
+	patientData.Access = map[string]bool{DoctorID: false}
 
 	// Marshal updated patient data into JSON format
 	patientDataJSON, err = json.Marshal(patientData)
@@ -310,20 +376,54 @@ func (s *SmartContract) RevokeAccess(ctx contractapi.TransactionContextInterface
 
 // define share data function
 
-func (s *SmartContract) hasPermission(ctx contractapi.TransactionContextInterface, userID string, patientID string) bool {
+func (s *SmartContract) hasPermission(ctx contractapi.TransactionContextInterface, userID string, patientID string) (bool, error) {
 	// Check if the user has permission to access the patient data
 	// In this example implementation, we assume that only the patient and healthcare providers with the patient's permission have access to the data
 	if userID == patientID {
-		return true
+		return true, nil
 	}
 
-	// Check if the user has been granted permission by the patient
-	permissionKey := fmt.Sprintf("%s_%s", patientID, userID)
-	permissionBytes, err := ctx.GetStub().GetState(permissionKey)
+	// Retrieve patient data from the ledger
+	patientDataJSON, err := ctx.GetStub().GetState(patientID)
 	if err != nil {
-		return false
+		return false, fmt.Errorf("failed to read patient data from world state: %v", err)
 	}
-	return permissionBytes != nil
+	if patientDataJSON == nil {
+		return false, fmt.Errorf("patient data with ID %s does not exist", patientID)
+	}
+
+	// Unmarshal patient data JSON into struct
+	var patientData PatientData
+	err = json.Unmarshal(patientDataJSON, &patientData)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal patient data JSON: %v", err)
+	}
+
+	access, ok := patientData.Access[userID]
+	if !ok {
+		return false, fmt.Errorf("%s doesn't exist in %s access list", userID, patientID)
+	}
+	if access == false {
+		return false, fmt.Errorf("%s doesn't have access to %s", userID, patientID)
+	}
+
+	/*
+		// Check if doctor has access to patient data
+		if permission := patientData.Access.providerID; ok {
+			return true , nil
+		} else {
+			return false , fmt.Errorf("Doctor with ID %s does not have access to patient data with ID %s", userID, patientID)
+		}
+
+		/*
+		// Check if the user has been granted permission by the patient
+		permissionKey := fmt.Sprintf("%s_%s", patientID, userID)
+		permissionBytes, err := ctx.GetStub().GetState(permissionKey)
+		if err != nil {
+			return false
+		}
+		return permissionBytes != nil */
+	return true, nil
 }
 
 func (s *SmartContract) ShareData(ctx contractapi.TransactionContextInterface, patientID string, recipientID string, data []byte) error {
@@ -333,12 +433,18 @@ func (s *SmartContract) ShareData(ctx contractapi.TransactionContextInterface, p
 	if err != nil {
 		return err
 	}
-	if !s.hasPermission(ctx, callerID, patientID) {
+
+	access, err := s.hasPermission(ctx, callerID, patientID)
+
+	if access == false && err != nil {
 		return fmt.Errorf("caller does not have permission to share data for patient %s", patientID)
 	}
 
 	// Check if the recipient has permission to access the data
-	if !s.hasPermission(ctx, recipientID, patientID) {
+
+	permission, err := s.hasPermission(ctx, recipientID, patientID)
+
+	if permission == false && err != nil {
 		return fmt.Errorf("recipient does not have permission to access data for patient %s", patientID)
 	}
 

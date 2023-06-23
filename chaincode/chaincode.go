@@ -25,7 +25,7 @@ type PatientData struct {
 	BloodType string          `json:"bloodType"`
 	Allergies string          `json:"allergies"`
 	Access    map[string]bool `json:"Doctor Access"`
-	Record    MedicalRecord
+	Record    MedicalRecord   `json:"record"`
 }
 type MedicalRecord struct {
 	Diagnose           string   `json:"diagnose"`
@@ -55,6 +55,8 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 		{ID: "Patient6", Name: "test6", Age: 15, Gender: "female", BloodType: "B-", Allergies: "jj", Record: MedicalRecord{"Diagnose6", "Medications6", []string{"diagnose11", "diagnose12"}, []string{"medication11", "medication12"}}, Access: map[string]bool{"Doctor2": true}},
 	}
 
+	fmt.Errorf("ledger is initialed successfuly")
+
 	for _, Patient := range Patients {
 		PatientJSON, err := json.Marshal(Patient) // take each patient and convert it to json format then store this format in PatientJSON file and check for error
 		if err != nil {                           //if error field is not empty
@@ -71,13 +73,17 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	return nil
 }
 
-func (s *SmartContract) CreatePatient(ctx contractapi.TransactionContextInterface, patientID string, name string, age int, gender string, bloodType string, allergies string, diagnose string, medication string) error {
+/*
+func (s *SmartContract) CreatePatient(ctx contractapi.TransactionContextInterface, patientID string, name string, age int, gender string, bloodType string, allergies string, diagnose string, medication string) (interface{}, error) {
 	exists, err := s.PatientExists(ctx, patientID)
+
+	fmt.Println("we will search if patient exists or no!!")
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if exists {
-		return fmt.Errorf("the Patient %s already exists", patientID)
+		return nil, fmt.Errorf("the Patient %s already exists", patientID)
 	}
 
 	NewPatient := PatientData{
@@ -91,11 +97,12 @@ func (s *SmartContract) CreatePatient(ctx contractapi.TransactionContextInterfac
 	}
 	PatientJSON, err := json.Marshal(NewPatient)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return ctx.GetStub().PutState(patientID, PatientJSON)
+	fmt.Printf("The Patient is added to the ledger successfully")
+	return ctx.GetStub().PutState(patientID, PatientJSON), nil
 }
+*/
 
 func (s *SmartContract) PatientExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
 	PatientJSON, err := ctx.GetStub().GetState(id)
@@ -166,13 +173,22 @@ func (s *SmartContract) ReadPatientMedicalInfo(ctx contractapi.TransactionContex
 		return nil, fmt.Errorf("the patient %s does not exist", patientID)
 	}
 
-	var Patient MedicalRecord
+	var Patient PatientData
 	err = json.Unmarshal(PatientRecordJSON, &Patient)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Patient, nil
+	fmt.Printf("Diagnosis: %s  , Medication: %s \n", Patient.Record.Diagnose, Patient.Record.Medications)
+	fmt.Println("Diagnoses history:")
+	for _, diagnosis := range Patient.Record.DiagnosesHistory {
+		fmt.Printf("- %s\n", diagnosis)
+	}
+	fmt.Println("Medication history:")
+	for _, history := range Patient.Record.MedicationsHistory {
+		fmt.Printf("- %s\n", history)
+	}
+	return &Patient.Record, nil
 }
 
 // ReadPatient returns the all patient info stored in the world state with given id.

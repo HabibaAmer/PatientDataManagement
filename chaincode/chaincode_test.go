@@ -8,7 +8,6 @@ import (
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 
-	//"github.com/HabibaAmer/PatientDataManagement/chaincode"
 	"github.com/HabibaAmer/PatientDataManagement/chaincode"
 
 	"github.com/hyperledger/fabric-samples/asset-transfer-basic/chaincode-go/chaincode/mocks"

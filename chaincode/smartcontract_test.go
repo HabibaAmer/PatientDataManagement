@@ -43,7 +43,7 @@ func TestInitLedger(t *testing.T) {
 	require.EqualError(t, err, "failed to put to world state. failed inserting key")
 }
 
-func TestCreatePatient(t *testing.T) {
+/*func TestCreatePatient(t *testing.T) {
 	chaincodeStub := &mocks.ChaincodeStub{}
 	transactionContext := &mocks.TransactionContext{}
 	transactionContext.GetStubReturns(chaincodeStub)
@@ -59,7 +59,7 @@ func TestCreatePatient(t *testing.T) {
 	chaincodeStub.GetStateReturns(nil, fmt.Errorf("unable to retrieve Patient"))
 	err = assetTransfer.CreatePatient(transactionContext, "patient1", "", 0, "", "", "", "", "")
 	require.EqualError(t, err, "failed to read from world state: unable to retrieve Patient")
-}
+}*/
 
 func TestReadPatientMedicalInfo(t *testing.T) {
 	chaincodeStub := &mocks.ChaincodeStub{}

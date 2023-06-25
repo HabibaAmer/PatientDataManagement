@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"chaincode/chaincode"
+
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
-
-	"github.com/HabibaAmer/PatientDataManagement/chaincode"
 
 	"github.com/hyperledger/fabric-samples/asset-transfer-basic/chaincode-go/chaincode/mocks"
 	"github.com/stretchr/testify/require"
@@ -72,16 +72,16 @@ func TestReadPatientMedicalInfo(t *testing.T) {
 
 	chaincodeStub.GetStateReturns(bytes, nil)
 	assetTransfer := chaincode.SmartContract{}
-	Patient, err := assetTransfer.ReadPatientMedicalInfo(transactionContext, "")
+	Patient, err := assetTransfer.ReadPatientMedicalInfo(transactionContext, "", "")
 	require.NoError(t, err)
-	require.Equal(t, expectedAsset, Patient)
+	require.Equal(t, expectedAsset.Record, Patient)
 
 	chaincodeStub.GetStateReturns(nil, fmt.Errorf("unable to retrieve Patient"))
-	_, err = assetTransfer.ReadPatientMedicalInfo(transactionContext, "")
+	_, err = assetTransfer.ReadPatientMedicalInfo(transactionContext, "", "")
 	require.EqualError(t, err, "failed to read from world state: unable to retrieve Patient")
 
 	chaincodeStub.GetStateReturns(nil, nil)
-	Patient, err = assetTransfer.ReadPatientMedicalInfo(transactionContext, "Patient1")
+	Patient, err = assetTransfer.ReadPatientMedicalInfo(transactionContext, "Doctor1", "Patient1")
 	require.EqualError(t, err, "the Patient Patient1 does not exist")
 	require.Nil(t, Patient)
 }
@@ -97,16 +97,16 @@ func TestReadPatientAllInfo(t *testing.T) {
 
 	chaincodeStub.GetStateReturns(bytes, nil)
 	assetTransfer := chaincode.SmartContract{}
-	Patient, err := assetTransfer.ReadPatientAllInfo(transactionContext, "")
+	Patient, err := assetTransfer.ReadPatientAllInfo(transactionContext, "", "")
 	require.NoError(t, err)
 	require.Equal(t, expectedPatient, Patient)
 
 	chaincodeStub.GetStateReturns(nil, fmt.Errorf("unable to retrieve Patient"))
-	_, err = assetTransfer.ReadPatientAllInfo(transactionContext, "")
+	_, err = assetTransfer.ReadPatientAllInfo(transactionContext, "", "")
 	require.EqualError(t, err, "failed to read from world state: unable to retrieve Patient")
 
 	chaincodeStub.GetStateReturns(nil, nil)
-	Patient, err = assetTransfer.ReadPatientAllInfo(transactionContext, "Patient1")
+	Patient, err = assetTransfer.ReadPatientAllInfo(transactionContext, "Doctor1", "Patient1")
 	require.EqualError(t, err, "the Patient Patient1 does not exist")
 	require.Nil(t, Patient)
 }
@@ -122,15 +122,15 @@ func TestUpdateMedicalpatientrecords(t *testing.T) {
 
 	chaincodeStub.GetStateReturns(bytes, nil)
 	assetTransfer := chaincode.SmartContract{}
-	err = assetTransfer.UpdateMedicalpatientrecords(transactionContext, "", "", "")
+	err = assetTransfer.UpdateMedicalpatientrecords(transactionContext, "", "", "", "")
 	require.NoError(t, err)
 
 	chaincodeStub.GetStateReturns(nil, nil)
-	err = assetTransfer.UpdateMedicalpatientrecords(transactionContext, "Patient1", "", "")
+	err = assetTransfer.UpdateMedicalpatientrecords(transactionContext, "Doctor1", "Patient1", "", "")
 	require.EqualError(t, err, "the Patient Patient1 does not exist")
 
 	chaincodeStub.GetStateReturns(nil, fmt.Errorf("unable to retrieve Patient"))
-	err = assetTransfer.UpdateMedicalpatientrecords(transactionContext, "Patient1", "", "")
+	err = assetTransfer.UpdateMedicalpatientrecords(transactionContext, "Doctor1", "Patient1", "", "")
 	require.EqualError(t, err, "failed to read from world state: unable to retrieve Patient")
 }
 

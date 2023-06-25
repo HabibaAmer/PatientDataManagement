@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	//"./chaincode"
-	//"github.com/HabibaAmer/PatientDataManagement/chaincode"
-
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 

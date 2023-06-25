@@ -1,9 +1,8 @@
-module github.com/tensor-programming/chaincode
+module chaincode
 
 go 1.20
 
 require (
-	github.com/HabibaAmer/PatientDataManagement v0.0.0-20230411083854-5511e2f6c7cc // direct
 	github.com/golang/protobuf v1.5.2 // direct
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20230228194215-b84622ba6a7a // direct
 	github.com/hyperledger/fabric-contract-api-go v1.2.1 // direct
